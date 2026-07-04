@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  zktecoserver:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: zktecoserver
+    ports:
+      - "4370:3000"
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: 3000
+    restart: unless-stopped
+    volumes:
+      - ./:/app
+      - /app/node_modules
+    env_file:
+      - .env
+    networks:
+      - zkteconetwork
+
+networks:
+  zkteconetwork:
+    driver: bridge
