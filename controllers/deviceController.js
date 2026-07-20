@@ -24,8 +24,7 @@ const getDeviceStatus = async (req, res) => {
             status    : 'online',
             ip,
             port      : parseInt(port) || 4370,
-            checkedAt : new Date(new Date().getTime() + 6 * 60 * 60 * 1000)
-                            .toISOString().replace('T', ' ').substring(0, 19),
+            checkedAt : new Date().toISOString(),
         });
 
     } catch (error) {
@@ -35,8 +34,7 @@ const getDeviceStatus = async (req, res) => {
             ip,
             port      : parseInt(port) || 4370,
             message   : error.message,
-            checkedAt : new Date(new Date().getTime() + 6 * 60 * 60 * 1000)
-                            .toISOString().replace('T', ' ').substring(0, 19),
+            checkedAt : new Date().toISOString(),
         });
     }
 };
@@ -137,7 +135,7 @@ const updateDeviceTime = async (req, res) => {
         return res.json({
             success    : true,
             message    : 'Device time updated successfully',
-            updatedTo  : bstNow.toISOString().replace('T', ' ').substring(0, 19),
+            updatedTo  : bstNow.toISOString(),
         });
 
     } catch (error) {

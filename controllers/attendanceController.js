@@ -1,10 +1,8 @@
 const { withDevice } = require('../services/zkService');
 
-// UTC → BST (+6:00)
-const toBST = (dateStr) => {
-    const date = new Date(dateStr);
-    const bst  = new Date(date.getTime() + 6 * 60 * 60 * 1000);
-    return bst.toISOString().replace('T', ' ').substring(0, 19); // "2026-06-28 10:31:30"
+const getTimestampValue = (value) => {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
 };
 
 const getAllAttendance = async (req, res) => {
@@ -30,11 +28,11 @@ const getAllAttendance = async (req, res) => {
                     userMap[u.userId] = u.name || null;
                 });
 
-                // Merge + convert time
+                // Keep the original device timestamp as-is
                 const records = attendance.data.map(record => ({
                     deviceUserId : record.deviceUserId,
                     employeeName : userMap[record.deviceUserId] || `Unknown (ID: ${record.deviceUserId})`,
-                    recordTime   : toBST(record.recordTime),
+                    recordTime   : record.recordTime,
                     attState     : record.attState,
                     verifyType   : record.verifyType,
                 }));
@@ -42,8 +40,8 @@ const getAllAttendance = async (req, res) => {
                 // Remove duplicate punches within 60 seconds for same user
                 const seen = {};
                 const filtered = records.filter(record => {
-                    const key      = record.deviceUserId;
-                    const punchTime = new Date(record.recordTime).getTime();
+                    const key       = record.deviceUserId;
+                    const punchTime = getTimestampValue(record.recordTime);
 
                     if (seen[key] && (punchTime - seen[key]) < 60 * 1000) {
                         return false; // duplicate, skip
@@ -94,21 +92,24 @@ const getTodayAttendance = async (req, res) => {
                     userMap[u.userId] = u.name || null;
                 });
 
-                // Today's date in BST
-                const now      = new Date();
-                const todayBST = new Date(now.getTime() + 6 * 60 * 60 * 1000);
-                const todayStr = todayBST.toISOString().substring(0, 10); // "2026-06-28"
+                // Filter records for the current day without reformatting the time
+                const today = new Date();
 
-                // Filter today only + convert time
                 const records = attendance.data
                     .map(record => ({
                         deviceUserId : record.deviceUserId,
                         employeeName : userMap[record.deviceUserId] || `Unknown (ID: ${record.deviceUserId})`,
-                        recordTime   : toBST(record.recordTime),
+                        recordTime   : record.recordTime,
                         attState     : record.attState,
                         verifyType   : record.verifyType,
                     }))
-                    .filter(record => record.recordTime.startsWith(todayStr));
+                    .filter(record => {
+                        const recordDate = new Date(record.recordTime);
+                        return !Number.isNaN(recordDate.getTime()) &&
+                            recordDate.getFullYear() === today.getFullYear() &&
+                            recordDate.getMonth() === today.getMonth() &&
+                            recordDate.getDate() === today.getDate();
+                    });
 
                 // Remove duplicate punches within 60 seconds
                 const seen     = {};
@@ -129,8 +130,7 @@ const getTodayAttendance = async (req, res) => {
 
         return res.json({
             success : true,
-            date    : new Date(new Date().getTime() + 6 * 60 * 60 * 1000)
-                        .toISOString().substring(0, 10),
+            date    : new Date().toISOString(),
             total   : data.length,
             data,
         });
@@ -177,13 +177,13 @@ const getUserAttendance = async (req, res) => {
                 // Check user exists on device
                 const employeeName = userMap[userId] || `Unknown (ID: ${userId})`;
 
-                // Filter by userId + convert time
+                // Filter by userId and keep the original device time
                 const records = attendance.data
                     .filter(record => String(record.deviceUserId) === String(userId))
                     .map(record => ({
                         deviceUserId : record.deviceUserId,
                         employeeName,
-                        recordTime   : toBST(record.recordTime),
+                        recordTime   : record.recordTime,
                         attState     : record.attState,
                         verifyType   : record.verifyType,
                     }));

@@ -1,12 +1,6 @@
 const axios = require('axios');
 
 // ─── Helpers ────────────────────────────────────────────
-const toBST = (dateStr) => {
-    const date = new Date(dateStr);
-    const bst  = new Date(date.getTime() + 6 * 60 * 60 * 1000);
-    return bst.toISOString().replace('T', ' ').substring(0, 19);
-};
-
 const parseAttLog = (body, serial) => {
     const records = [];
     const lines   = body.trim().split('\n');
@@ -21,7 +15,7 @@ const parseAttLog = (body, serial) => {
         records.push({
             device_serial : serial,
             employee_id   : parts[0].trim(),
-            punch_time    : toBST(parts[1].trim()),
+            punch_time    : parts[1].trim(),
             status        : parseInt(parts[2]) || 0,   // 0=check-in, 1=check-out
             verify_type   : parseInt(parts[3]) || 0,   // 1=fingerprint, 3=password
         });
