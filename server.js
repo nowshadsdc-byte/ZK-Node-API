@@ -5,6 +5,8 @@ const dotenv = require("dotenv");
 const bodyParser = require("body-parser");
 const helmet = require("helmet");
 const morgan = require("morgan");
+const fs = require("fs");
+const path = require("path");
 const attendanceRoutes = require("./routes/attendance");
 const userRoutes = require("./routes/users");
 const admsRoutes = require("./routes/adms");
@@ -16,6 +18,21 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const logFilePath = path.join(__dirname, "log.txt");
+const admsLogFilePath = path.join(__dirname, "admslog.txt");
+const serverStartTime = Date.now();
+
+const writeRequestLog = (req) => {
+  const logEntry = {
+    timestamp: new Date().toISOString(),
+    method: req.method,
+    path: req.originalUrl || req.url,
+    ip: req.ip || req.headers["x-forwarded-for"] || "unknown",
+    body: req.body && Object.keys(req.body).length ? req.body : null,
+  };
+
+  fs.appendFileSync(logFilePath, `${JSON.stringify(logEntry)}\n`);
+};
 
 // Middleware
 app.use(helmet());
@@ -27,7 +44,36 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 // Routes
 app.get("/", (req, res) => {
-  res.send("OK");
+  writeRequestLog(req);
+
+  const serverUrl = `${req.protocol}://${req.get("host") || "localhost"}`;
+  const runtimeSeconds = ((Date.now() - serverStartTime) / 1000).toFixed(2);
+
+  res.json({
+    status: "OK",
+    serverUrl,
+    runtimeSeconds: Number(runtimeSeconds),
+    serverTime: new Date().toISOString(),
+  });
+});
+
+app.post("/adms/request", (req, res) => {
+  const logEntry = {
+    type: "adms",
+    timestamp: new Date().toISOString(),
+    method: req.method,
+    path: req.originalUrl || req.url,
+    ip: req.ip || req.headers["x-forwarded-for"] || "unknown",
+    body: req.body && Object.keys(req.body).length ? req.body : null,
+  };
+
+  fs.appendFileSync(logFilePath, `${JSON.stringify(logEntry)}\n`);
+  fs.appendFileSync(admsLogFilePath, `${JSON.stringify(logEntry)}\n`);
+
+  res.json({
+    success: true,
+    message: "ADMS request logged",
+  });
 });
 
 // After your existing app.use() middleware lines, add:
